@@ -10,6 +10,8 @@ protocol.BeginRequestPattern = "> I2 B xxxxx"
 
 protocol.EndRequestPattern = "> I4 B xxx"
 
+protocol.UnknownRecordPattern = "> B xxxxxxx"
+
 function protocol.readPacket(socket)
 	-- read/parse header
 	local header = socket:read(protocol.HeaderLength)
@@ -41,13 +43,16 @@ function protocol.writePacket(socket, requestID, type, content)
 	local header = protocol.HeaderPattern:pack(version, type, requestID, contentLength, paddingLength)
 	socket:write(header)
 	socket:write(content)
-	
-	print("Sent", type, requestID, content)
 end
 
 function protocol.endRequest(socket, requestID, appStatus, protocolStatus)
-	local content = protocol.EndRequestPattern:pack(appStatus, protocolStatus or FCGI.REQUEST_COMPLETE)
+	local content = protocol.EndRequestPattern:pack(appStatus or 0, protocolStatus or FCGI.REQUEST_COMPLETE)
 	protocol.writePacket(socket, requestID, FCGI.END_REQUEST, content)
+end
+
+function protocol.unknownRecord(socket, type)
+	local content = protocol.UnknownRecordPattern:pack(type)
+	protocol.writePacket(socket, 0, FCGI.UNKNOWN_TYPE, content)
 end
 
 return protocol

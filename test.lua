@@ -2,7 +2,7 @@ local cqueues = require "cqueues"
 local socket = require "cqueues.socket"
 
 local FCGI = require "cqueues-fastcgi.constants"
-local protocol = require "cqueues-fastcgi.protocol" 
+local responder = require "cqueues-fastcgi.responder"
 
 local controller = cqueues.new()
 
@@ -12,35 +12,23 @@ local server = socket.listen {
 	unlink = true
 }
 
+local clients = 0
+
 controller:wrap(function()
 	
 	while true do
 		local connection = server:accept()
-		connection:setmode("bn", "bn")
 		
 		controller:wrap(function()
-			while true do
-				local requestID, type, content = protocol.readPacket(connection)
-				if requestID == nil then
-					return
-				end
-				
-				print(type, requestID, #content)
+			clients = clients + 1
+			local request = responder.new(connection)
 			
-				if type == FCGI.BEGIN_REQUEST then
-					local role, keepalive = protocol.parseBeginRequest(content)
-					print(role, keepalive)
-				end
-				
-				if type == FCGI.STDIN and #content == 0 then
-					protocol.writePacket(connection, requestID, FCGI.STDOUT, "Status: 200 OK\r\n\r\n...")
-					protocol.writePacket(connection, requestID, FCGI.STDOUT, "")
-					--protocol.writePacket(connection, requestID, FCGI.STDERR, "Error, is a test")
-					protocol.writePacket(connection, requestID, FCGI.STDERR, "")
-					protocol.endRequest(connection, requestID, 200)
-					connection:shutdown("w")
-				end
-			end
+			request:init()
+			request:header("Status", 200)
+			cqueues.sleep(5)
+			request:write(("%i clients connected"):format(clients))
+			request:close()
+			clients = clients - 1
 		end)
 
 	end
