@@ -20,15 +20,19 @@ controller:wrap(function()
 		local connection = server:accept()
 		
 		controller:wrap(function()
-			clients = clients + 1
 			local request = responder.new(connection)
 			
-			request:init()
-			request:header("Status", 200)
-			cqueues.sleep(5)
-			request:write(("%i clients connected"):format(clients))
+			request:pcall(function()
+				request:init()
+				request:header("Status", 200)
+				request:write "PARAMS:\n"
+				for k, v in pairs(request.params) do
+					request:write(("%s = %s\n"):format(k, v))
+				end
+			end)
+
 			request:close()
-			clients = clients - 1
+			
 		end)
 
 	end

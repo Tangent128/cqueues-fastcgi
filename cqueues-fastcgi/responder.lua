@@ -54,10 +54,18 @@ function responder_funcs:init()
 	local role = protocol.parseBeginRequest(content)
 	assert(role == FCGI.RESPONDER, "Request wants non-responder role")
 	
-	repeat
-		type, content = self:readPacket()
-		assert(type == FCGI.PARAMS, "Request did not send params first")
-	until content == ""
+	-- read params string
+	local chunks = {}
+	for type, chunk in self.readPacket, self do
+		if chunk == "" then
+			break
+		end
+		assert(type == FCGI.PARAMS, "Unknown packet when expecting PARAMS")
+		chunks[#chunks + 1] = chunk
+	end
+	
+	local paramData = table.concat(chunks)
+	self.params = protocol.parseNameValuePairs(paramData)
 end
 
 function responder_funcs:read()
