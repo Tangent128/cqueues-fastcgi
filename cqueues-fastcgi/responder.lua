@@ -1,6 +1,6 @@
 
 local cqueues = require "cqueues"
-local socket = require "cqueues.socket"
+local cqueuesSocket = require "cqueues.socket"
 
 local FCGI = require "cqueues-fastcgi.constants"
 local protocol = require "cqueues-fastcgi.protocol"
@@ -124,6 +124,32 @@ function responder_funcs:pcall(func, ...)
 	if not ok then
 		self:log(tostring(err))
 	end
+end
+
+-- a default main loop that implements a typical application
+-- structure for FastCGI responders
+function responder.simpleLoop(socketOpts, func)
+	local controller = cqueues.new()
+	local server = cqueuesSocket.listen(socketOpts)
+	
+	controller:wrap(function()
+		while true do
+			local client = server:accept()
+			
+			controller:wrap(function()
+				local request = responder.new(client)
+				
+				request:pcall(function()
+					request:init()
+					func(request)
+				end)
+	
+				request:close()
+			end)
+		end
+	end)
+	
+	return controller:loop()
 end
 
 return responder
