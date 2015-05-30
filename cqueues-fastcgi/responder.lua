@@ -126,9 +126,19 @@ function responder_funcs:pcall(func, ...)
 	end
 end
 
+-- default "error page" handler for the simpleLoop;
+-- called by simpleLoop if a request errors before
+-- sending a response
+local function errorPage(request, code, message)
+	request:header("Status", tostring(code).." "..message)
+	request:header("Content-Type", "text/plain")
+	request:header("Encoding", "UTF-8")
+	request:write(message)
+end
+
 -- a default main loop that implements a typical application
 -- structure for FastCGI responders
-function responder.simpleLoop(socketOpts, func)
+function responder.simpleLoop(socketOpts, func, errorHandler)
 	local controller = cqueues.new()
 	local server = cqueuesSocket.listen(socketOpts)
 	
@@ -143,7 +153,11 @@ function responder.simpleLoop(socketOpts, func)
 					request:init()
 					func(request)
 				end)
-	
+				
+				if not request.headersDone then
+					(errorHandler or errorPage)(request, 500, "Script Error")
+				end
+				
 				request:close()
 			end)
 		end
