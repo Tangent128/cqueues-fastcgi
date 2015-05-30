@@ -82,7 +82,7 @@ end
 
 function responder_funcs:slurp()
 	local chunks = {}
-	for chunk in self.readStdin, self do
+	for chunk in self.read, self do
 		chunks[#chunks + 1] = chunk
 	end
 	return table.concat(chunks)
