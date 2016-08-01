@@ -9,8 +9,14 @@ local json_api = {}
 function json_api.simpleLoop(socketOpts, appFunc)
     return responder.simpleLoop(socketOpts,
     function(request)
-        local body = request:slurp()
-        local input = cjson.decode(body)
+        local input
+        local method = request.params.REQUEST_METHOD
+        if method == "POST" or method == "PUT" then
+            local body = request:slurp()
+            input = cjson.decode(body)
+        else
+            input = {}
+        end
         
         local output = appFunc(request, input)
         
