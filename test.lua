@@ -1,20 +1,15 @@
 
-local responder = require "cqueues-fastcgi.responder"
-local cjson = require "cjson"
+local json_api = require "cqueues-fastcgi.json-api"
 
-assert(responder.simpleLoop({
+-- convenience wrapper for a JSON API; 
+assert(json_api.simpleLoop({
 	path = "fastcgi.socket",
 	unlink = true
-}, function(request)
-	local body = request:slurp()
-	local input = cjson.decode(body)
-	
-	request:header("Status", 200)
-	request:write("CONTENT:\n")
-	--request:write(body)
-	for k, v in pairs(input) do
-		request:write(("%s = %s\n"):format(k, v))
-	end
+}, function(request, input)
+	return {
+        CGI = request.params;
+        CONTENT = input;
+    }
 end, function(request, code, message)
 	request:header("Status", tostring(code).." "..message)
 	request:header("Content-Type", "application/json")
